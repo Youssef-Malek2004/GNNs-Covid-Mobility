@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 import pandas as pd
+import random
 
 def prepare_temporal_graph_data_non_overlapping(
     filtered_covid_df: pd.DataFrame,
@@ -169,4 +170,15 @@ def generate_sliding_temporal_graph_data(
     print(f"[✓] Train: {X_train.shape}, Test: {X_test.shape}")
 
     return X_train, X_test, Y_train, Y_test
+
+def set_seed(seed: int = 42):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)  # if using GPU
+    torch.cuda.manual_seed_all(seed)  # for multi-GPU
+
+    # Ensuring deterministic behavior (note: may affect performance)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
 

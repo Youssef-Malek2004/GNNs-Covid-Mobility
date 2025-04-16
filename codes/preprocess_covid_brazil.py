@@ -1,5 +1,6 @@
 import os
 import pandas as pd
+from typing import Optional, Set
 
 
 def zscore_safe(x):
@@ -13,7 +14,8 @@ def filter_and_scale_covid_by_centrality(
     covid_df: pd.DataFrame,
     centrality_path: str = "data/Centrality_indices.xlsx",
     population_path: str = "data/cleaned_population_2022.csv",
-    output_path: str = "data/filtered_scaled_covid.csv"
+    output_path: str = "data/filtered_scaled_covid.csv",
+    city_whitelist: Optional[Set[int]] = None
 ) -> pd.DataFrame:
     """
     Filters COVID-19 DataFrame to only include municipalities in the centrality dataset,
@@ -24,7 +26,7 @@ def filter_and_scale_covid_by_centrality(
         covid_df (pd.DataFrame): Full COVID dataset.
         centrality_path (str): Path to the centrality Excel file with 'Codmundv'.
         output_path (str): File path to save or load the preprocessed dataset.
-
+        city_whitelist (Optional[Set[int]]):
     Returns:
         pd.DataFrame: Filtered and scaled COVID DataFrame.
     """
@@ -37,7 +39,8 @@ def filter_and_scale_covid_by_centrality(
 
     # Load centrality data
     centrality_df = pd.read_excel(centrality_path)
-    valid_city_ids = centrality_df['Codmundv'].dropna().astype(int).unique()
+    centrality_city_ids = set(centrality_df['Codmundv'].dropna().astype(int).unique())
+    valid_city_ids = centrality_city_ids & city_whitelist if city_whitelist else centrality_city_ids
 
     # Filter COVID data
     filtered_covid_df = covid_df[covid_df['ibgeID'].isin(valid_city_ids)].copy()
