@@ -17,21 +17,29 @@ class GCNEncoder(nn.Module):
 
 
 class TemporalTransformer(nn.Module):
-    def __init__(self, in_channels, hidden_dim=64, nhead=4, num_layers=1):
+    def __init__(self, in_channels, hidden_dim=64, nhead=4, num_layers=1, max_len=100):
         super().__init__()
         self.proj = nn.Linear(in_channels, hidden_dim)
+        self.positional_encoding = nn.Parameter(torch.randn(1, max_len, hidden_dim))  # Learnable PE
         encoder_layer = nn.TransformerEncoderLayer(d_model=hidden_dim, nhead=nhead, batch_first=True)
         self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
         self.hidden_dim = hidden_dim
+        self.max_len = max_len
 
     def forward(self, x):
         # x: [B, T, N, F]
         B, T, N, F = x.size()
         x = x.permute(0, 2, 1, 3).reshape(B * N, T, F)  # [B*N, T, F]
-        x = self.proj(x)
+        x = self.proj(x)  # [B*N, T, D]
+
+        # Add positional encoding (crop to T if needed)
+        pos = self.positional_encoding[:, :T, :]  # [1, T, D]
+        x = x + pos
+
         x = self.transformer(x)  # [B*N, T, D]
         x = x[:, -1, :]  # Use last time step
         return x.reshape(B, N, self.hidden_dim)  # [B, N, D]
+
 
 
 class FusionAttention(nn.Module):
