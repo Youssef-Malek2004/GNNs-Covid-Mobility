@@ -30,13 +30,6 @@ def filter_and_scale_covid_by_centrality(
     Returns:
         pd.DataFrame: Filtered and scaled COVID DataFrame.
     """
-    # Check for saved version
-    if os.path.exists(output_path):
-        print(f"[✓] Found saved preprocessed COVID data at '{output_path}'. Loading...")
-        return pd.read_csv(output_path, parse_dates=['date'])
-
-    print("[⚙] Processing COVID data based on centrality filtering...")
-
     # Load centrality data
     centrality_df = pd.read_excel(centrality_path)
     centrality_city_ids = set(centrality_df['Codmundv'].dropna().astype(int).unique())

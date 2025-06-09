@@ -1,7 +1,7 @@
 import os
 import pandas as pd
 from collections import defaultdict
-from typing import Optional, Set
+from typing import Optional, Set, Tuple
 
 
 def extract_backbone_from_files_brazil(
@@ -10,7 +10,7 @@ def extract_backbone_from_files_brazil(
         alpha: float = 0.01,
         output_path: str = "data/mobility_backbone_brazil.csv",
         city_whitelist: Optional[Set[int]] = None
-):
+) -> Tuple[pd.DataFrame, Set[int]]:
     """
     Extract backbone from mobility edges based on pij threshold and top-5 neighbor rule.
     If the backbone CSV already exists, load and return it directly.
@@ -24,14 +24,6 @@ def extract_backbone_from_files_brazil(
     Returns:
         pd.DataFrame: Filtered edges (backbone only).
     """
-
-    # Check if the output file already exists
-    if os.path.exists(output_path):
-        print(f"[✓] Backbone file found at '{output_path}'. Loading it...")
-        return pd.read_csv(output_path)
-
-    print("[⚙] Backbone file not found. Extracting now...")
-
     # Load centrality data
     centrality_df = pd.read_excel(centrality_path)
     centrality_city_ids = set(centrality_df['Codmundv'].dropna().astype(int).unique())
@@ -103,7 +95,9 @@ def extract_backbone_from_files_brazil(
     backbone_df.to_csv(output_path, index=False)
     print(f"[✓] Backbone extracted and saved to '{output_path}'.")
 
-    return backbone_df
+    backbone_cities = set(backbone_df['source']).union(set(backbone_df['target']))
+    return backbone_df, backbone_cities
+
 
 
 import os

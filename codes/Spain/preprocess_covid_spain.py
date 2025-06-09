@@ -27,11 +27,11 @@ def filter_and_scale_spanish_covid_by_centrality(
     Returns:
         pd.DataFrame: Filtered and Z-score normalized COVID data.
     """
-    if os.path.exists(output_path):
-        print(f"[✓] Found saved preprocessed COVID data at '{output_path}'. Loading...")
-        return pd.read_csv(output_path, parse_dates=['Fecha'])
-
-    print("[⚙] Processing Spanish COVID data based on centrality filtering...")
+    # if os.path.exists(output_path):
+    #     print(f"[✓] Found saved preprocessed COVID data at '{output_path}'. Loading...")
+    #     return pd.read_csv(output_path, parse_dates=['Fecha'])
+    #
+    # print("[⚙] Processing Spanish COVID data based on centrality filtering...")
 
     # Load centrality data
     centrality_df = pd.read_csv(centrality_path)

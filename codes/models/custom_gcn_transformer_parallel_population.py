@@ -17,25 +17,20 @@ class GCNEncoder(nn.Module):
 
 
 class TemporalTransformer(nn.Module):
-    def __init__(self, in_channels, hidden_dim=64, nhead=32, num_layers=1, max_len=100):
+    def __init__(self, in_channels, hidden_dim=64, nhead=4, num_layers=1):
         super().__init__()
         self.proj = nn.Linear(in_channels, hidden_dim)
-        self.pos_embedding = nn.Parameter(torch.randn(max_len, hidden_dim))  # learnable pos emb
         encoder_layer = nn.TransformerEncoderLayer(d_model=hidden_dim, nhead=nhead, batch_first=True)
         self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
         self.hidden_dim = hidden_dim
 
     def forward(self, x):
         B, T, N, F = x.size()
-        x = x.permute(0, 2, 1, 3).reshape(B * N, T, F)
-        x = self.proj(x)
-
-        pos = self.pos_embedding[:T] * torch.linspace(0.5, 1.5, T, device=x.device).unsqueeze(1)
-        x = x + pos
-
+        x = x.permute(0, 2, 1, 3).reshape(B * N, T, F)  # [B*N, T, F]
+        x = self.proj(x)  # [B*N, T, D]
         x = self.transformer(x)  # [B*N, T, D]
-        x = x.mean(dim=1)  # <-- Better for time series
-        return x.reshape(B, N, self.hidden_dim)
+        x = x[:, -1, :]  # last time step
+        return x.reshape(B, N, self.hidden_dim)  # [B, N, D]
 
 
 class FusionAttention(nn.Module):
@@ -47,7 +42,6 @@ class FusionAttention(nn.Module):
         self.softmax = nn.Softmax(dim=-1)
 
     def forward(self, temporal_feat, spatial_feat):
-        # Both [B, N, D]
         q = self.query(temporal_feat)
         k = self.key(spatial_feat)
         v = self.value(spatial_feat)
@@ -60,52 +54,37 @@ class FusionAttention(nn.Module):
 class SpatioTemporalFusionNet(nn.Module):
     def __init__(self, in_channels, graph_feat_dim, trans_hidden=64, out_channels=1, num_nodes=None):
         super().__init__()
-
         assert num_nodes is not None, "You must provide num_nodes to use node embedding."
 
         self.use_static_node_features = graph_feat_dim > 0
         self.trans_hidden = trans_hidden
+        self.static_node_features = None  # Set externally: [N, graph_feat_dim]
 
         if self.use_static_node_features:
-            self.node_embedding = nn.Embedding(num_nodes, graph_feat_dim)
             self.spatial_encoder = GCNEncoder(graph_feat_dim, trans_hidden)
         else:
-            self.node_embedding = None
             self.spatial_encoder = None
 
         self.temporal_encoder = TemporalTransformer(in_channels, hidden_dim=trans_hidden)
         self.fusion = FusionAttention(trans_hidden)
         self.decoder = nn.Sequential(
-            nn.Linear(1024, 512),
-            nn.ReLU(),
-            nn.Linear(512, 256),
-            nn.ReLU(),
-            nn.Linear(256, 64),
+            nn.Linear(trans_hidden, 64),
             nn.ReLU(),
             nn.Linear(64, out_channels)
         )
 
-        # self.decoder = nn.Sequential(
-        #     nn.Linear(64, 32),
-        #     nn.ReLU(),
-        #     nn.Linear(32, out_channels)
-        # )
-
-
-    def forward(self, x_seq, edge_index, edge_weight=None, node_indices=None):
+    def forward(self, x_seq, edge_index, edge_weight=None):
         B, T, N, F = x_seq.size()
         temporal_repr = self.temporal_encoder(x_seq)  # [B, N, D]
 
         if self.use_static_node_features:
-            assert node_indices is not None, "Node indices required"
-            node_features = self.node_embedding(node_indices)  # Embedding subset
-            spatial_repr = self.spatial_encoder(node_features, edge_index, edge_weight)  # [node_batch, D]
-            spatial_repr = spatial_repr.unsqueeze(0).repeat(B, 1, 1)  # [B, node_batch, D]
+            assert self.static_node_features is not None, "Static node features must be set before calling forward()"
+            node_features = self.static_node_features  # [N, graph_feat_dim]
+            spatial_repr = self.spatial_encoder(node_features, edge_index, edge_weight)  # [N, D]
+            spatial_repr = spatial_repr.unsqueeze(0).repeat(B, 1, 1)  # [B, N, D]
         else:
             spatial_repr = torch.zeros(B, N, self.trans_hidden, device=x_seq.device)
 
         fused = self.fusion(temporal_repr, spatial_repr)
-        output = self.decoder(fused)
+        output = self.decoder(fused)  # [B, N, out_channels]
         return output
-
-

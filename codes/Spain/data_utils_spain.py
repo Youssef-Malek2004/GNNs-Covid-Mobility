@@ -5,6 +5,7 @@ from sklearn.preprocessing import MinMaxScaler
 from torch_geometric.utils import from_networkx
 from torch_geometric.data import Data
 from collections import defaultdict
+from typing import List
 
 from sklearn.preprocessing import MinMaxScaler
 import pandas as pd
@@ -176,4 +177,38 @@ def extract_backbone_from_avg_matrix(avg_matrix: pd.DataFrame, cities: list, alp
     print(f"[✓] Filtered down to {len(df_backbone)} edges from {len(df_edges)}")
 
     return df_backbone
+
+
+def mock_extract_backbone_from_avg_matrix(avg_matrix: pd.DataFrame, cities: List[str], alpha=0.01,
+                                          top_k=5) -> pd.DataFrame:
+    """
+    Mock version of extract_backbone_from_avg_matrix that just returns all non-zero entries as edges.
+
+    Args:
+        avg_matrix (pd.DataFrame): Averaged mobility matrix with city names as index/columns.
+        cities (List[str]): List of province names (str).
+        alpha (float): Ignored.
+        top_k (int): Ignored.
+
+    Returns:
+        pd.DataFrame: Unfiltered edge list using province names.
+    """
+    print("[⚙] Mock backbone extractor: returning all non-zero mobility flows.")
+
+    edges = []
+    for i, src in enumerate(cities):
+        for j, dst in enumerate(cities):
+            if i != j:
+                w = avg_matrix.iloc[i, j]
+                if not pd.isna(w) and w > 0:
+                    edges.append({
+                        "source": src,
+                        "target": dst,
+                        "weight": w,
+                        "pij": 1.0,  # placeholder
+                        "keep_topk": True,
+                        "keep": True
+                    })
+
+    return pd.DataFrame(edges)
 
