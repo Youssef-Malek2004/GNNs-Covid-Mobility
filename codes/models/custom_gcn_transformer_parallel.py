@@ -75,21 +75,21 @@ class SpatioTemporalFusionNet(nn.Module):
 
         self.temporal_encoder = TemporalTransformer(in_channels, hidden_dim=trans_hidden)
         self.fusion = FusionAttention(trans_hidden)
-        self.decoder = nn.Sequential(
-            nn.Linear(1024, 512),
-            nn.ReLU(),
-            nn.Linear(512, 256),
-            nn.ReLU(),
-            nn.Linear(256, 64),
-            nn.ReLU(),
-            nn.Linear(64, out_channels)
-        )
-
         # self.decoder = nn.Sequential(
-        #     nn.Linear(64, 32),
+        #     nn.Linear(1024, 512),
         #     nn.ReLU(),
-        #     nn.Linear(32, out_channels)
+        #     nn.Linear(512, 256),
+        #     nn.ReLU(),
+        #     nn.Linear(256, 64),
+        #     nn.ReLU(),
+        #     nn.Linear(64, out_channels)
         # )
+
+        self.decoder = nn.Sequential(
+            nn.Linear(64, 32),
+            nn.ReLU(),
+            nn.Linear(32, out_channels),
+        )
 
 
     def forward(self, x_seq, edge_index, edge_weight=None, node_indices=None):

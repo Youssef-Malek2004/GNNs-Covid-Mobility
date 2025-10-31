@@ -36,23 +36,22 @@ class SpatiotemporalTransformer(nn.Module):
         encoder_layer = nn.TransformerEncoderLayer(d_model=hidden_dim, dropout=0.2,  nhead=nhead, batch_first=True)
         self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
 
-        # self.decoder = nn.Sequential(
-        #     nn.Linear(hidden_dim, 128),
-        #     nn.ReLU(),
-        #     nn.Dropout(0.3),
-        #     nn.Linear(128, forecast_dim)
-        # )
-
         self.decoder = nn.Sequential(
-            nn.Linear(1024, 512),
+            nn.Linear(hidden_dim, 32),
             nn.ReLU(),
-            nn.Linear(512, 256),
-            nn.ReLU(),
-            nn.Linear(256, 64),
-            nn.ReLU(),
-            nn.Dropout(0.1),
-            nn.Linear(64, forecast_dim)
+            nn.Linear(32, forecast_dim)
         )
+
+        # self.decoder = nn.Sequential(
+        #     nn.Linear(1024, 512),
+        #     nn.ReLU(),
+        #     nn.Linear(512, 256),
+        #     nn.ReLU(),
+        #     nn.Linear(256, 64),
+        #     nn.ReLU(),
+        #     nn.Dropout(0.1),
+        #     nn.Linear(64, forecast_dim)
+        # )
 
     def forward(self, x_seq, edge_index, edge_weight=None, node_features=None):
         # x_seq: [B, T, N, F]
